@@ -18,6 +18,7 @@ namespace ScientistCat.EditorTools
         private const string GolemPrefabPath = "Assets/_Game/Prefabs/Bosses/CrystalGolem.prefab";
         private const string ShardPrefabPath = "Assets/_Game/Prefabs/Projectiles/CrystalShard.prefab";
         private const string FallingCrystalPath = "Assets/_Game/Prefabs/Bosses/FallingCrystal.prefab";
+        private const string GolemSpritePath = "Assets/_Game/Art/Bosses/CrystalGolem.png";
         private const string TelegraphMaterialPath = "Assets/_Game/Materials/M_Telegraph.mat";
 
         // Until Dimension 2 exists, the crystal gate leads back to the test arena.
@@ -196,10 +197,6 @@ namespace ScientistCat.EditorTools
 
         private static void BuildGolemPrefab(int enemyLayer, int playerLayer)
         {
-            var rock = GamePrefabBuilder.GetLitMaterial("M_GolemRock", new Color(0.32f, 0.37f, 0.52f));
-            var crystal = GamePrefabBuilder.GetLitMaterial("M_GolemCrystal", new Color(0.55f, 0.9f, 1f));
-            var eye = GamePrefabBuilder.GetLitMaterial("M_GolemEye", new Color(0.2f, 1f, 1f));
-
             var root = new GameObject("CrystalGolem");
             root.layer = enemyLayer;
 
@@ -211,14 +208,18 @@ namespace ScientistCat.EditorTools
 
             var visual = new GameObject("Visual").transform;
             visual.SetParent(root.transform, false);
-            Visual(PrimitiveType.Cube, "Body", visual, new Vector3(0, 1.5f, 0), Quaternion.identity, new Vector3(2.2f, 2f, 1.6f), rock);
-            Visual(PrimitiveType.Cube, "Head", visual, new Vector3(0, 2.9f, 0.2f), Quaternion.identity, new Vector3(1.1f, 0.8f, 0.9f), rock);
-            Visual(PrimitiveType.Cube, "Eye", visual, new Vector3(0, 2.95f, 0.66f), Quaternion.identity, new Vector3(0.7f, 0.18f, 0.1f), eye);
-            Visual(PrimitiveType.Cube, "ArmL", visual, new Vector3(-1.5f, 1.3f, 0.1f), Quaternion.Euler(0, 0, -8), new Vector3(0.75f, 2f, 0.75f), rock);
-            Visual(PrimitiveType.Cube, "ArmR", visual, new Vector3(1.5f, 1.3f, 0.1f), Quaternion.Euler(0, 0, 8), new Vector3(0.75f, 2f, 0.75f), rock);
-            Visual(PrimitiveType.Cube, "CrystalA", visual, new Vector3(0.8f, 2.8f, -0.4f), Quaternion.Euler(45, 20, 45), new Vector3(0.6f, 1.3f, 0.6f), crystal);
-            Visual(PrimitiveType.Cube, "CrystalB", visual, new Vector3(-0.8f, 2.7f, -0.3f), Quaternion.Euler(45, -20, 45), new Vector3(0.5f, 1.1f, 0.5f), crystal);
-            Visual(PrimitiveType.Cube, "CrystalC", visual, new Vector3(0f, 3.3f, -0.5f), Quaternion.Euler(45, 0, 45), new Vector3(0.7f, 1.5f, 0.7f), crystal);
+            // Hand-drawn sprite (pivot at the feet), upright and turned to the camera like Wilson.
+            var spriteGo = new GameObject("Sprite");
+            spriteGo.transform.SetParent(visual, false);
+            var sr = spriteGo.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(GolemSpritePath);
+            sr.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(TestArenaBuilder.UnlitSpriteMaterial);
+            sr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            sr.receiveShadows = false;
+            var walk = spriteGo.AddComponent<SpriteWalkVisual>();
+            var walkSo = new SerializedObject(walk);
+            walkSo.FindProperty("body").objectReferenceValue = root.transform;
+            walkSo.ApplyModifiedPropertiesWithoutUndo();
             foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = enemyLayer;
 
             var health = root.AddComponent<Health>();

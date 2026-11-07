@@ -107,6 +107,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScientistCat.Core.FaceCamera
   matchPitch: 1
+  compensateUprightPitch: 0
+  maxPitchStretch: 2.2
 --- !u!114 &4721961727720290385
 MonoBehaviour:
   m_ObjectHideFlags: 0
