@@ -3,57 +3,71 @@ using UnityEngine;
 namespace ScientistCat.Combat
 {
     /// <summary>
-    /// Straight-flying projectile used by both the player and bosses.
-    /// Who it can hit is decided by its layer (PlayerProjectile / EnemyProjectile) and the Physics2D collision matrix.
+    /// Straight-flying projectile for the player and bosses. Moves with sphere casts each frame,
+    /// so it never tunnels through walls and needs no Rigidbody or collision-matrix setup.
     /// </summary>
-    [RequireComponent(typeof(Rigidbody2D))]
     public class Projectile : MonoBehaviour
     {
         [SerializeField] private float speed = 15f;
         [SerializeField, Min(1)] private int damage = 1;
         [SerializeField] private float lifetime = 3f;
+        [SerializeField] private float radius = 0.2f;
+        [Tooltip("Layers this projectile damages (e.g. Enemy for the player, Player for bosses).")]
+        [SerializeField] private LayerMask damageLayers;
+        [Tooltip("Layers that stop the projectile (walls, boxes, ground).")]
+        [SerializeField] private LayerMask obstacleLayers = 1;
         [Tooltip("Keep flying after hitting something damageable.")]
         [SerializeField] private bool pierce = false;
         [Tooltip("Optional effect spawned on impact.")]
         [SerializeField] private GameObject hitEffectPrefab;
 
-        private Rigidbody2D body;
-
-        private void Awake()
-        {
-            body = GetComponent<Rigidbody2D>();
-        }
+        private Vector3 direction = Vector3.forward;
+        private float dieTime;
 
         private void Start()
         {
-            Destroy(gameObject, lifetime);
-            if (body.linearVelocity == Vector2.zero) Launch(transform.right);
+            dieTime = Time.time + lifetime;
         }
 
-        /// <summary>Negative values keep the prefab's defaults.</summary>
-        public void Launch(Vector2 direction, float speedOverride = -1f, int damageOverride = -1)
+        /// <summary>Direction is flattened onto the ground plane. Negative values keep the prefab's defaults.</summary>
+        public void Launch(Vector3 dir, float speedOverride = -1f, int damageOverride = -1)
         {
             if (speedOverride > 0f) speed = speedOverride;
             if (damageOverride > 0) damage = damageOverride;
-
-            direction = direction.sqrMagnitude > 0f ? direction.normalized : Vector2.right;
-            transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
-            body.linearVelocity = direction * speed;
+            dir.y = 0f;
+            direction = dir.sqrMagnitude > 0.0001f ? dir.normalized : transform.forward;
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        private void Update()
         {
-            var health = other.GetComponentInParent<Health>();
-
-            // Ignore zone triggers (arenas, portals...) that can't take damage.
-            if (other.isTrigger && health == null) return;
-
-            if (health != null)
+            if (Time.time >= dieTime)
             {
-                health.TakeDamage(damage, transform.position);
-                if (pierce) return;
+                Destroy(gameObject);
+                return;
             }
-            Impact();
+
+            float step = speed * Time.deltaTime;
+            int mask = damageLayers | obstacleLayers;
+
+            if (Physics.SphereCast(transform.position, radius, direction, out RaycastHit hit, step, mask, QueryTriggerInteraction.Ignore))
+            {
+                bool damageable = (damageLayers.value & (1 << hit.collider.gameObject.layer)) != 0;
+                var health = damageable ? hit.collider.GetComponentInParent<Health>() : null;
+                if (health != null)
+                {
+                    health.TakeDamage(damage, transform.position);
+                    if (pierce)
+                    {
+                        transform.position += direction * step;
+                        return;
+                    }
+                }
+                transform.position = hit.point;
+                Impact();
+                return;
+            }
+
+            transform.position += direction * step;
         }
 
         private void Impact()

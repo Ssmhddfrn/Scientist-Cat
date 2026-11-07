@@ -15,6 +15,10 @@ namespace ScientistCat.TopDown
         [SerializeField] private Camera viewCamera;
         [Tooltip("Off = only turn around the Y axis (stays upright). On = match the camera tilt too.")]
         [SerializeField] private bool matchCameraPitch = true;
+        [Tooltip("Only when Match Camera Pitch is off: stretches the upright sprite so it looks like it faces the camera. " +
+                 "Upright sprites never lean into objects behind them, so nothing clips through boxes or walls.")]
+        [SerializeField] private bool compensateUprightPitch = false;
+        [SerializeField] private float maxPitchStretch = 2.2f;
         [Tooltip("Enable if the source art faces left instead of right.")]
         [SerializeField] private bool artFacesLeft = false;
 
@@ -69,7 +73,15 @@ namespace ScientistCat.TopDown
 
             UpdateFlip();
 
-            transform.localScale = new Vector3(baseScale.x * (1f - stretch), baseScale.y * (1f + stretch), baseScale.z);
+            float pitchStretch = 1f;
+            if (!matchCameraPitch && compensateUprightPitch)
+            {
+                // An upright plane seen from pitch p looks cos(p) times shorter; undo that.
+                float cosPitch = new Vector2(viewCamera.transform.forward.x, viewCamera.transform.forward.z).magnitude;
+                pitchStretch = Mathf.Min(maxPitchStretch, 1f / Mathf.Max(0.01f, cosPitch));
+            }
+
+            transform.localScale = new Vector3(baseScale.x * (1f - stretch), baseScale.y * (1f + stretch) * pitchStretch, baseScale.z);
             transform.rotation = FacingRotation() * Quaternion.Euler(0f, 0f, tilt);
         }
 

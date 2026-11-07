@@ -13,8 +13,8 @@ namespace ScientistCat.Combat
 
         /// <summary>(current, max)</summary>
         public event Action<int, int> Changed;
-        /// <summary>(amount, position the hit came from)</summary>
-        public event Action<int, Vector2> Damaged;
+        /// <summary>(amount, world position the hit came from)</summary>
+        public event Action<int, Vector3> Damaged;
         public event Action Died;
 
         public int Current { get; private set; }
@@ -34,7 +34,7 @@ namespace ScientistCat.Combat
         public bool TakeDamage(int amount) => TakeDamage(amount, transform.position);
 
         /// <summary>Returns true if the damage was applied.</summary>
-        public bool TakeDamage(int amount, Vector2 hitFrom)
+        public bool TakeDamage(int amount, Vector3 hitFrom)
         {
             if (amount <= 0 || IsDead || IsInvulnerable) return false;
 

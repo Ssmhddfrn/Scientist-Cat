@@ -29,6 +29,8 @@ namespace ScientistCat.TopDown
         private CharacterController controller;
         private Vector3 planarVelocity;
         private float verticalVelocity;
+        private Vector3 knockbackVelocity;
+        private float knockbackUntil;
 
         private void Awake()
         {
@@ -38,11 +40,14 @@ namespace ScientistCat.TopDown
 
         private void Update()
         {
-            Vector3 desiredDirection = ControlEnabled ? CameraRelative(ReadMoveInput()) : Vector3.zero;
+            bool knockedBack = Time.time < knockbackUntil;
+            Vector3 desiredDirection = ControlEnabled && !knockedBack ? CameraRelative(ReadMoveInput()) : Vector3.zero;
 
             Vector3 targetVelocity = desiredDirection * moveSpeed;
             float rate = desiredDirection.sqrMagnitude > 0f ? acceleration : deceleration;
-            planarVelocity = Vector3.MoveTowards(planarVelocity, targetVelocity, rate * Time.deltaTime);
+            planarVelocity = knockedBack
+                ? knockbackVelocity
+                : Vector3.MoveTowards(planarVelocity, targetVelocity, rate * Time.deltaTime);
 
             if (controller.isGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
             verticalVelocity += gravity * Time.deltaTime;
@@ -86,6 +91,14 @@ namespace ScientistCat.TopDown
         public void Stop()
         {
             planarVelocity = Vector3.zero;
+            knockbackUntil = 0f;
+        }
+
+        /// <summary>Pushes the character on the ground plane for a short time, ignoring input.</summary>
+        public void AddKnockback(Vector3 velocity, float duration)
+        {
+            knockbackVelocity = new Vector3(velocity.x, 0f, velocity.z);
+            knockbackUntil = Time.time + duration;
         }
     }
 }
